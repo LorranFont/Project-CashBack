@@ -1,14 +1,47 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  name          String?
+  email         String   @unique
+  password      String
+  referralCode  String   @unique // Código que ele gera para os outros
+  referredById  String?          // ID de quem indicou ele
+  
+  // Relação de Indicação (Auto-relacionamento)
+  referredBy    User?    @relation("UserReferral", fields: [referredById], references: [id])
+  referrals     User[]   @relation("UserReferral")
+
+  transactions  Transaction[]
+  createdAt     DateTime @default(now())
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  amount      Float    // Valor da transação (Cashback ou Bônus)
+  description String   // Ex: "Cashback Compra #123"
+  type        TransactionType
+  status      Status   @default(PENDING)
+  createdAt   DateTime @default(now())
+}
+
+enum TransactionType {
+  CASHBACK
+  REFERRAL_BONUS
+  WITHDRAWAL
+}
+
+enum Status {
+  PENDING
+  COMPLETED
+  CANCELLED
 }
